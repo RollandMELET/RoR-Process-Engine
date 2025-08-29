@@ -1,0 +1,187 @@
+{
+  "metadata": {
+    "processType": "MouleDalle",
+    "version": "V1.1-Generic",
+    "ref": "Generic engine version - migrated from duhalde-ui prototype",
+    "integrations": {
+      "360sc": { "enabled": false, "apiUrl": "", "apiKey": "" },
+      "urrats": { "enabled": false, "webhookUrl": "" },
+      "n8n": { "enabled": false, "workflowId": "" }
+    }
+  },
+  "captureSystem": {
+    "pieceId": "",
+    "mouldId": ""
+  },
+  "processSteps": [
+    {
+      "stepId": "Etape 1",
+      "stepName": "PC1 : VÉRIFICATION ÉTAPE INITIALE",
+      "stepType": "PointControle",
+      "intro": "AVEZ VOUS PRÉPARÉ LE MOULE ?",
+      "questions": [
+        {
+          "ok": "Propreté générale du coffrage",
+          "ko": "Le moule est-il sale ?"
+        },
+        {
+          "ok": "Retirer les résidus de béton précédent",
+          "ko": "Reste-t-il des résidus de béton ?"
+        },
+        {
+          "ok": "État des joints d'étanchéité",
+          "ko": "Les joints d'étanchéité sont-ils en mauvais état ?"
+        },
+        {
+          "ok": "Contrôler les éléments du moule",
+          "ko": "Y a-t-il un problème avec les éléments du moule ?"
+        },
+        {
+          "ok": "Contrôler le système ouverture/fermeture",
+          "ko": "Y a-t-il un problème avec le système d'ouverture/fermeture ?"
+        }
+      ],
+      "navigation": {
+        "defaultNext": "Etape 2"
+      },
+      "actionBar": {
+        "photo": { "enabled": true, "hook": "360sc:uploadStepPhoto" },
+        "note": { "enabled": true, "hook": "360sc:saveStepNote" },
+        "notification": { "enabled": true, "hook": "urrats:sendAlert" },
+        "documentation": { "enabled": true, "hook": "360sc:openStepDocs" }
+      }
+    },
+    {
+      "stepId": "Etape 2", 
+      "stepName": "PC2 : VÉRIFICATION ACIER",
+      "stepType": "PointControle",
+      "intro": "AVEZ-VOUS PLACÉ LES ACIERS SUIVANT PLAN ?",
+      "questions": [
+        {
+          "ok": "Conforme au plan",
+          "ko": "Non conforme au plan ?"
+        }
+      ],
+      "navigation": {
+        "defaultNext": "Etape 3"
+      }
+    },
+    {
+      "stepId": "Etape 8",
+      "stepName": "PA1 : VALIDATION AVANT INSERTION", 
+      "stepType": "PointArret",
+      "intro": "CONTRÔLE PIECE OBLIGATOIRE",
+      "captureUser": {
+        "CONFORME ?": {
+          "type": "binary",
+          "options": ["OUI", "REBUT"],
+          "validation": { "required": true }
+        },
+        "SÉGRÉGATION ET/OU BULLAGE MINEUR ?": {
+          "type": "binary", 
+          "options": ["OUI", "NON"],
+          "validation": {
+            "conditional": {
+              "dependsOn": "CONFORME ?",
+              "value": "OUI"
+            }
+          }
+        },
+        "BESOIN DE FINITION ?": {
+          "type": "binary",
+          "options": ["OUI", "NON"], 
+          "validation": {
+            "conditional": {
+              "dependsOn": "CONFORME ?",
+              "value": "OUI"
+            }
+          }
+        },
+        "Observation ?": {
+          "type": "text",
+          "validation": { "required": false }
+        }
+      },
+      "validation": {
+        "requiresSupervisor": true,
+        "conditionalFields": [
+          {
+            "fieldName": "SÉGRÉGATION ET/OU BULLAGE MINEUR ?",
+            "condition": "CONFORME ?=OUI",
+            "requiredWhen": "CONFORME is OUI"
+          },
+          {
+            "fieldName": "BESOIN DE FINITION ?", 
+            "condition": "CONFORME ?=OUI",
+            "requiredWhen": "CONFORME is OUI"
+          }
+        ]
+      },
+      "navigation": {
+        "conditionalNext": [
+          {
+            "condition": "CONFORME ?=REBUT",
+            "nextStepId": "END",
+            "action": "reject",
+            "message": "Piece marked as REBUT"
+          },
+          {
+            "condition": "CONFORME ?=OUI AND BESOIN DE FINITION ?=OUI",
+            "nextStepId": "Etape 9", 
+            "action": "continue",
+            "message": "Navigation to Step 9 (Finition needed)"
+          },
+          {
+            "condition": "CONFORME ?=OUI AND BESOIN DE FINITION ?=NON",
+            "nextStepId": "Etape 11",
+            "action": "continue", 
+            "message": "Navigation to Step 11 (No finition needed)"
+          }
+        ]
+      },
+      "hooks": {
+        "onComplete": "360sc:updateObjectStatus",
+        "onReject": "urrats:notifyRejection"
+      }
+    },
+    {
+      "stepId": "Etape 10",
+      "stepName": "PA1 Bis : VALIDATION AVANT INSERTION DALLE",
+      "stepType": "PointArret",
+      "intro": "LEVÉE DU POINT D'ARRÊT APRÈS FINITION",
+      "captureUser": {
+        "CONFORME ?": {
+          "type": "binary",
+          "options": ["OUI", "REBUT"],
+          "validation": { "required": true }
+        },
+        "Observation ?": {
+          "type": "text",
+          "validation": { "required": false }
+        }
+      },
+      "validation": {
+        "requiresSupervisor": true
+      },
+      "navigation": {
+        "conditionalNext": [
+          {
+            "condition": "CONFORME ?=REBUT",
+            "nextStepId": "END",
+            "action": "reject",
+            "message": "Piece marked as REBUT"
+          },
+          {
+            "condition": "CONFORME ?=OUI", 
+            "nextStepId": "Etape 11",
+            "action": "continue"
+          }
+        ]
+      },
+      "hooks": {
+        "onComplete": "360sc:updateObjectStatus",
+        "onReject": "urrats:notifyRejection"
+      }
+    }
+  ]
+}

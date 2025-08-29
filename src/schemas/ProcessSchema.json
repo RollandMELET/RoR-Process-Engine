@@ -1,0 +1,223 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RoR Process Engine - Generic Process Definition Schema",
+  "description": "JSON schema for defining any industrial process workflow",
+  "type": "object",
+  "required": ["metadata", "processSteps"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["processType", "version", "ref"],
+      "properties": {
+        "processType": {
+          "type": "string",
+          "description": "Unique identifier for the process type"
+        },
+        "version": {
+          "type": "string", 
+          "description": "Process definition version"
+        },
+        "ref": {
+          "type": "string",
+          "description": "Reference documentation"
+        },
+        "integrations": {
+          "type": "object",
+          "description": "External system integration configuration",
+          "properties": {
+            "360sc": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean", "default": false },
+                "apiUrl": { "type": "string" },
+                "apiKey": { "type": "string" }
+              }
+            },
+            "urrats": {
+              "type": "object", 
+              "properties": {
+                "enabled": { "type": "boolean", "default": false },
+                "webhookUrl": { "type": "string" }
+              }
+            },
+            "n8n": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean", "default": false },
+                "workflowId": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "captureSystem": {
+      "type": "object",
+      "description": "System-level data capture (piece ID, mold ID, etc.)",
+      "properties": {
+        "pieceId": { "type": "string" },
+        "mouldId": { "type": "string" }
+      }
+    },
+    "processSteps": {
+      "type": "array",
+      "description": "Ordered list of process steps",
+      "items": {
+        "type": "object",
+        "required": ["stepId", "stepName", "stepType"],
+        "properties": {
+          "stepId": {
+            "type": "string",
+            "description": "Unique step identifier (e.g., 'Etape 1')"
+          },
+          "stepName": {
+            "type": "string", 
+            "description": "Display name for the step"
+          },
+          "stepType": {
+            "type": "string",
+            "enum": ["PointControle", "PointControleSpecial", "PointArret", "PointSynchronisation"],
+            "description": "Type of step determining UI template and behavior"
+          },
+          "intro": {
+            "type": ["string", "null"],
+            "description": "Optional intro question text"
+          },
+          "questions": {
+            "type": ["array", "null"],
+            "description": "Questions for this step (PointControle/PointControleSpecial)",
+            "items": {
+              "type": "object",
+              "required": ["ok", "ko"],
+              "properties": {
+                "ok": { "type": "string", "description": "Positive version of question" },
+                "ko": { "type": "string", "description": "Negative version of question" }
+              }
+            }
+          },
+          "captureUser": {
+            "type": "object",
+            "description": "User input fields configuration",
+            "patternProperties": {
+              ".*": {
+                "oneOf": [
+                  { "type": "string" },
+                  { 
+                    "type": "object",
+                    "properties": {
+                      "value": { "type": "string" },
+                      "type": { 
+                        "type": "string", 
+                        "enum": ["text", "binary", "scan", "auto", "timestamp"] 
+                      },
+                      "options": { 
+                        "type": "array", 
+                        "items": { "type": "string" } 
+                      },
+                      "validation": {
+                        "type": "object",
+                        "properties": {
+                          "required": { "type": "boolean" },
+                          "conditional": {
+                            "type": "object",
+                            "properties": {
+                              "dependsOn": { "type": "string" },
+                              "value": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "validation": {
+            "type": "object",
+            "description": "Step-specific validation rules",
+            "properties": {
+              "requiresSupervisor": { "type": "boolean" },
+              "conditionalFields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "fieldName": { "type": "string" },
+                    "condition": { "type": "string" },
+                    "requiredWhen": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "navigation": {
+            "type": "object", 
+            "description": "Step navigation logic",
+            "properties": {
+              "conditionalNext": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "condition": { "type": "string" },
+                    "nextStepId": { "type": "string" },
+                    "action": { 
+                      "type": "string",
+                      "enum": ["continue", "skip", "end", "reject"]
+                    }
+                  }
+                }
+              },
+              "defaultNext": { "type": "string" }
+            }
+          },
+          "hooks": {
+            "type": "object",
+            "description": "Integration hooks for external systems",
+            "properties": {
+              "onEnter": { "type": "string" },
+              "onValidate": { "type": "string" },
+              "onComplete": { "type": "string" },
+              "onReject": { "type": "string" }
+            }
+          },
+          "actionBar": {
+            "type": "object",
+            "description": "Action bar configuration for this step",
+            "properties": {
+              "photo": { 
+                "type": "object",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "hook": { "type": "string" }
+                }
+              },
+              "note": {
+                "type": "object", 
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "hook": { "type": "string" }
+                }
+              },
+              "notification": {
+                "type": "object",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "hook": { "type": "string" }
+                }
+              },
+              "documentation": {
+                "type": "object",
+                "properties": {
+                  "enabled": { "type": "boolean" },
+                  "hook": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
